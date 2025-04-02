@@ -1,0 +1,60 @@
+Vagrant.configure("2") do |config|
+  config.vm.box = "generic/alpine318"
+  
+
+  # SERVER NODE
+  config.vm.define "dgutakS" do |server|
+    server.vm.hostname = "dgutakS"
+    server.vm.network "private_network", ip: "192.168.56.110"
+    server.vm.synced_folder ".", "/vagrant"
+    server.vm.provider "virtualbox" do |vb|
+      vb.memory = 1024
+      vb.cpus = 1
+    end
+
+    server.vm.provision "shell", inline: <<-SHELL
+      echo "[+] Installing K3s Server..."
+      apk add curl
+      curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="--write-kubeconfig-mode=644" sh -
+
+      sleep 7
+
+      echo "[+] Setting up kubectl for vagrant..."
+      mkdir -p /home/vagrant/.kube
+      cp /etc/rancher/k3s/k3s.yaml /home/vagrant/.kube/config
+      chown -R vagrant:vagrant /home/vagrant/.kube
+
+     echo "[+] Dump token into shared folder"
+     mkdir -p /vagrant/.token
+     cp /var/lib/rancher/k3s/server/node-token /vagrant/.token/node-token
+     echo "[+] Success!!!!"
+    SHELL
+
+  end
+  # AGENT NODE
+  config.vm.define "dgutakSW" do |worker|
+    worker.vm.hostname = "dgutakSW"
+    worker.vm.network "private_network", ip: "192.168.56.111"
+    worker.vm.synced_folder ".", "/vagrant"
+    worker.vm.provider "virtualbox" do |vb|
+      vb.memory = 1024
+      vb.cpus = 1
+    end
+
+    worker.vm.provision "shell", inline: <<-SHELL
+      set -eux
+      echo "[+] Install base packages"
+      apk add curl openssh-client
+      echo "[+] Wait for token"
+      while [ ! -f /vagrant/.token/node-token ]; do
+        sleep 1
+      done
+      echo "[+] Join the cluster"
+      TOKEN=$(cat /vagrant/.token/node-token)
+      curl -sfL https://get.k3s.io | K3S_URL=https://192.168.56.110:6443 K3S_TOKEN=$TOKEN sh -
+
+    SHELL
+  end
+
+  
+end
