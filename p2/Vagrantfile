@@ -1,0 +1,32 @@
+Vagrant.configure("2") do |config|
+  config.vm.box = "generic/alpine318"
+  
+
+  # SERVER NODE
+  config.vm.define "dgutakS" do |server|
+    server.vm.hostname = "dgutakS"
+    server.vm.network "private_network", ip: "192.168.56.110"
+    server.vm.synced_folder ".", "/vagrant"
+    server.vm.provider "virtualbox" do |vb|
+      vb.memory = 1024
+      vb.cpus = 1
+    end
+
+    server.vm.provision "shell", inline: <<-SHELL
+      echo "[+] Installing K3s Server..."
+      apk add curl
+      curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="--write-kubeconfig-mode=644" sh -
+
+      echo "[+] Setting up kubectl for vagrant..."
+      mkdir -p /home/vagrant/.kube
+      cp /etc/rancher/k3s/k3s.yaml /home/vagrant/.kube/config
+      chown -R vagrant:vagrant /home/vagrant/.kube
+
+      # here go 3 pods 
+
+    SHELL
+
+  end
+
+  
+end
