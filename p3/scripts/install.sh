@@ -89,7 +89,7 @@ then
     argocd app sync my-app
 else
     echo "ArgoCD CLI is already installed"
-fi  
+fi
 
 echo "=== DONE ==="
 echo "-> ArgoCD Dashboard: https://localhost:8080"
